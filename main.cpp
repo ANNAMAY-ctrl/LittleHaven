@@ -58,6 +58,24 @@ bool isShoreline(int x, int y,
 	return false;
 }
 
+bool collidesWithTree(
+	sf::Vector2f position,
+	sf::Vector2f size,
+	const sf::Vector2f& treePosition)
+{
+
+	sf::FloatRect playerBounds(position, size);
+
+	sf::FloatRect trunkBounds(
+		{ treePosition.x + 45.f,
+		treePosition.y + 125.f },
+		{ 30.f, 25.f }
+	);
+
+	return playerBounds.findIntersection(
+		trunkBounds).has_value();
+}
+
 int main()
 {
 	sf::RenderWindow window(
@@ -120,7 +138,29 @@ int main()
 		rockTexture.setSmooth(false);
 		sf::Sprite reeds(reedsTexture);
 
-		//
+		//Load cherry blossom texture
+		sf::Texture treeTexture;
+
+		if (!treeTexture.loadFromFile("assets/decorations/cherry_blossom.png"))
+		{
+			return 1;
+		}
+		treeTexture.setSmooth(false);
+
+		sf::Sprite tree(treeTexture);
+
+
+		//Cherry blossom tree locations
+		sf::Vector2f treePositions[] =
+		{
+			{ 20.f, 10.f },
+		    { 440.f, 40.f },
+			{ 760.f, 20.f },
+			{ 40.f, 530.f },
+			{ 360.f, 540.f },
+			{ 800.f, 530.f },
+			{ 1140.f, 540.f }
+		};
 
 	//Create the farm map
 	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
@@ -211,22 +251,48 @@ int main()
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			movement.x += speed * deltaTime;
 
-		//Horizontal collision
-		if (canMove(player.getPosition() +
-			sf::Vector2f(movement.x, 0.f),
-			player.getSize(), farmMap))
-		{
-			player.move({ movement.x, 0.f });
-		}
-
 		//Vertical collision
-		if (canMove(player.getPosition() +
-			sf::Vector2f(0.f, movement.y),
-			player.getSize(), farmMap))
+		sf::Vector2f nextY = player.getPosition() +
+			sf::Vector2f(0.f, movement.y);
+		bool blockedY = false;
+
+		for (const auto& position : treePositions)
+		{
+			if (collidesWithTree(
+				nextY, player.getSize(), position))
+			{
+				blockedY = true;
+				break;
+			}
+		}
+		
+		if (!blockedY && canMove(
+			nextY, player.getSize(), farmMap))
 		{
 			player.move({ 0.f, movement.y });
 		}
 
+		//Horizontal collison
+		sf::Vector2f nextX = player.getPosition() +
+			sf::Vector2f(movement.x, 0.f);
+
+		bool blockedX = false;
+
+		for (const auto& position : treePositions)
+		{
+			if (collidesWithTree(
+				nextX, player.getSize(), position))
+			{
+				blockedX = true;
+				break;
+			}
+		}
+
+		if (!blockedX && canMove(
+			nextX, player.getSize(), farmMap))
+		{
+			player.move({ movement.x, 0.f });
+		}
 
 		//Draw the game World
 		window.clear();
@@ -327,7 +393,33 @@ int main()
 			}
 		}
 
-	window.draw(player);
+		/// Calculate the player's ground position
+		float playerFeet = player.getPosition().y +
+			player.getSize().y;
+
+		// Draw trees behind the player
+		for (const auto& position : treePositions)
+		{
+			if (position.y + 150.f <= playerFeet)
+			{
+				tree.setPosition(position);
+				window.draw(tree);
+			}
+		}
+
+		//Draw player
+		window.draw(player);
+
+			//Draw trees in front of the player
+		for (const auto& position : treePositions)
+		{
+			if (position.y + 150.f > playerFeet)
+			{
+				tree.setPosition(position);
+				window.draw(tree);
+			}
+			}
+		
 	window.display();
 }
 
