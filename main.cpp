@@ -36,7 +36,27 @@ bool canMove(sf::Vector2f position,
 	return true;
 }
 
+bool isShoreline(int x, int y,
+	const int farmMap[MAP_HEIGHT][MAP_WIDTH])
+{
+	if (farmMap[y][x] != 0)
+		return false;
 
+	if (x > 0 && farmMap[y][x - 1] == 2)
+		return true;
+
+	if (x < MAP_WIDTH - 1 && farmMap[y][x + 1] == 2)
+		return true;
+
+
+	if (y > 0 && farmMap[y - 1][x] == 2)
+		return true;
+
+	if (y < MAP_HEIGHT - 1 && farmMap[y + 1][x] == 2)
+		return true;
+
+	return false;
+}
 
 int main()
 {
@@ -77,8 +97,30 @@ int main()
 	//Create lily sprite
 	sf::Sprite lily(lilyTexture);
 
+	//Load mossy rock texture
+	sf::Texture rockTexture;
+
+	if (!rockTexture.loadFromFile("assets/decorations/mossy_rock.png"))
+	{
+		return 1;
+	}
+
+	rockTexture.setSmooth(false);
+		sf::Sprite rock(rockTexture);
 
 
+		//Load reeds texture 
+		sf::Texture reedsTexture;
+
+		if (!reedsTexture.loadFromFile("assets/decorations/reeds.png"))
+		{
+			return 1;
+		}
+
+		rockTexture.setSmooth(false);
+		sf::Sprite reeds(reedsTexture);
+
+		//
 
 	//Create the farm map
 	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
@@ -255,6 +297,35 @@ int main()
 		}
 	}
 }
+
+		// Draw shoreline decorations
+		for (int y = 0; y < MAP_HEIGHT; y++)
+		{
+			for (int x = 0; x < MAP_WIDTH; x++)
+			{
+				if (isShoreline(x, y, farmMap))
+				{
+					if ((x + y) % 3 == 0)
+					{
+						rock.setPosition({
+							x * 40.f,
+							y * 40.f
+							});
+
+						window.draw(rock);
+					}
+					else if ((x + y) % 3 == 1)
+					{
+						reeds.setPosition({
+							x * 40.f,
+							y * 40.f
+							});
+
+						window.draw(reeds);
+					}
+				}
+			}
+		}
 
 	window.draw(player);
 	window.display();
