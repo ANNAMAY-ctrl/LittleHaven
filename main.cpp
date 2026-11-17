@@ -54,7 +54,32 @@ int main()
 		return 1;
 	}
 	grassTexture.setSmooth(false);
-	
+
+	//Load water texture
+	sf::Texture waterTexture;
+
+	if (!waterTexture.loadFromFile("assets/terrain/water.png"))
+	{
+		return 1;
+	}
+	waterTexture.setSmooth(false);
+
+	//Load lily texture
+	sf::Texture lilyTexture;
+
+	if (!lilyTexture.loadFromFile("assets/decorations/lily.png"))
+	{
+		return 1;
+	}
+
+	lilyTexture.setSmooth(false);
+
+	//Create lily sprite
+	sf::Sprite lily(lilyTexture);
+
+
+
+
 	//Create the farm map
 	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
 	int grassVariants[MAP_HEIGHT][MAP_WIDTH] = {};
@@ -84,9 +109,16 @@ int main()
 			if (x >= 3 && x <= 10 && y >= 3 && y <= 9)
 				farmMap[y][x] = 1;
 
-				//Pond
-			else if (x >= 23 && x <= 28 && y >= 3 && y <= 7)
+			//Pond
+			else if (
+
+				((x - 25.5f) * (x - 25.5f)) / 12.25f +
+				((y - 5.f) * (y - 5.f)) / 9.f <= 1.f
+				)
+			{
 				farmMap[y][x] = 2;
+			}
+
 
 			//Walking path
 			else if (y == 12 || x == 15)
@@ -119,10 +151,10 @@ int main()
 			if (event->is<sf::Event::Closed>())
 				window.close();
 		}
-	
 
-	//Player movement
-		// Player movement
+
+		//Player movement
+			// Player movement
 		sf::Vector2f movement({ 0.f, 0.f });
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
@@ -137,70 +169,93 @@ int main()
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			movement.x += speed * deltaTime;
 
-	//Horizontal collision
-	if (canMove(player.getPosition() +
-		sf::Vector2f(movement.x, 0.f),
-		player.getSize(), farmMap))
-	{
-		player.move({ movement.x, 0.f });
-	}
-
-	//Vertical collision
-	if (canMove(player.getPosition() +
-		sf::Vector2f(0.f, movement.y),
-		player.getSize(), farmMap))
-	{
-		player.move({ 0.f, movement.y });
-	}
-
-
-	//Draw the game World
-	window.clear();
-
-	sf::RectangleShape tile({ 40.f, 40.f });
-
-	for (int y = 0; y < MAP_HEIGHT; y++)
-	{
-		for (int x = 0; x < MAP_WIDTH; x++)
+		//Horizontal collision
+		if (canMove(player.getPosition() +
+			sf::Vector2f(movement.x, 0.f),
+			player.getSize(), farmMap))
 		{
-			tile.setPosition({
-				x * 40.f,
-				y * 40.f
-				});
-
-			tile.setTexture(nullptr);
-			tile.setFillColor(sf::Color::White);
-
-
-			switch (farmMap[y][x])
-			{
-			case 0:
-				tile.setTexture(&grassTexture, true);
-				tile.setTextureRect(sf::IntRect(
-					{ grassVariants[y][x] * TILE_SIZE, 0 },
-					{ TILE_SIZE, TILE_SIZE }
-				));
-				break;
-
-			case 1:
-				tile.setFillColor(sf::Color(150, 99, 63));
-				break;
-
-			case 2:
-				tile.setFillColor(sf::Color(120, 185, 216));
-				break;
-
-			case 3:
-				tile.setFillColor(sf::Color(219, 195, 152));
-				break;
-
-
-			}
-
-			window.draw(tile);
+			player.move({ movement.x, 0.f });
 		}
 
+		//Vertical collision
+		if (canMove(player.getPosition() +
+			sf::Vector2f(0.f, movement.y),
+			player.getSize(), farmMap))
+		{
+			player.move({ 0.f, movement.y });
+		}
+
+
+		//Draw the game World
+		window.clear();
+
+		sf::RectangleShape tile({ 40.f, 40.f });
+
+		for (int y = 0; y < MAP_HEIGHT; y++)
+		{
+			for (int x = 0; x < MAP_WIDTH; x++)
+			{
+				tile.setPosition({
+					x * 40.f,
+					y * 40.f
+					});
+
+				tile.setTexture(nullptr);
+				tile.setFillColor(sf::Color::White);
+
+
+				switch (farmMap[y][x])
+				{
+				case 0:
+					tile.setTexture(&grassTexture, true);
+					tile.setTextureRect(sf::IntRect(
+						{ grassVariants[y][x] * TILE_SIZE, 0 },
+						{ TILE_SIZE, TILE_SIZE }
+					));
+					break;
+
+				case 1:
+					tile.setFillColor(sf::Color(150, 99, 63));
+					break;
+
+				case 2:
+					tile.setTexture(&waterTexture, true);
+
+					if ((x + y) % 3 == 0)
+						tile.setFillColor(sf::Color(225, 240, 255));
+					else
+						tile.setFillColor(sf::Color::White);
+					break;
+
+
+				case 3:
+					tile.setFillColor(sf::Color(219, 195, 152));
+					break;
+
+
+				}
+
+				window.draw(tile);
+			}
+
+		}
+		//Draw water lilies
+		for (int y = 0; y < MAP_HEIGHT; y++)
+		{
+			for (int x = 0; x < MAP_WIDTH; x++)
+			{
+				if (farmMap[y][x] == 2 &&
+					(x * 7 + y * 3) % 9 == 0)
+				{
+			lily.setPosition({
+				  x * 40.f,
+				  y * 40.f
+				});
+			window.draw(lily);
+		}
 	}
+}
+
 	window.draw(player);
 	window.display();
 }
