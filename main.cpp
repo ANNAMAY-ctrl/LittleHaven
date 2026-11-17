@@ -1,4 +1,4 @@
-
+#include <random>
 #include <SFML/Graphics.hpp>
 const int TILE_SIZE = 40;
 const int MAP_WIDTH = 32;
@@ -45,9 +45,34 @@ int main()
 	);
 
 	window.setFramerateLimit(60);
+
+	//Load grass texture
+	sf::Texture grassTexture;
+
+	if (!grassTexture.loadFromFile("assets/terrain/grass_tileset.png"))
+	{
+		return 1;
+	}
+	grassTexture.setSmooth(false);
 	
 	//Create the farm map
 	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
+	int grassVariants[MAP_HEIGHT][MAP_WIDTH] = {};
+
+	std::mt19937 randomGenerator(42);
+
+	std::discrete_distribution<int> grassDistribution(
+		{ 35, 25, 20, 7, 7, 6 }
+	);
+
+	for (int y = 0; y < MAP_HEIGHT; y++)
+	{
+		for (int x = 0; x < MAP_WIDTH; x++)
+		{
+			grassVariants[y][x] =
+				grassDistribution(randomGenerator);
+		}
+	}
 
 
 	//Generate terrain
@@ -114,7 +139,7 @@ int main()
 
 	//Horizontal collision
 	if (canMove(player.getPosition() +
-		sf::Vector2f(0.f, movement.y),
+		sf::Vector2f(movement.x, 0.f),
 		player.getSize(), farmMap))
 	{
 		player.move({ movement.x, 0.f });
@@ -122,7 +147,7 @@ int main()
 
 	//Vertical collision
 	if (canMove(player.getPosition() +
-		sf::Vector2f(movement.y, 0.f),
+		sf::Vector2f(0.f, movement.y),
 		player.getSize(), farmMap))
 	{
 		player.move({ 0.f, movement.y });
@@ -143,10 +168,18 @@ int main()
 				y * 40.f
 				});
 
+			tile.setTexture(nullptr);
+			tile.setFillColor(sf::Color::White);
+
+
 			switch (farmMap[y][x])
 			{
 			case 0:
-				tile.setFillColor(sf::Color(145, 190, 120));
+				tile.setTexture(&grassTexture, true);
+				tile.setTextureRect(sf::IntRect(
+					{ grassVariants[y][x] * TILE_SIZE, 0 },
+					{ TILE_SIZE, TILE_SIZE }
+				));
 				break;
 
 			case 1:
