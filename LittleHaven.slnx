@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="LittleHaven.vcxproj" />
+  <Project Path="LittleHaven.vcxproj" Id="ad863aa0-6e72-4b97-be99-63fb75cff35f" />
 </Solution>

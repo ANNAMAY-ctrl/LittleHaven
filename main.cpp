@@ -1,3 +1,5 @@
+#include <vector>
+#include <cmath>
 #include <random>
 #include <SFML/Graphics.hpp>
 const int TILE_SIZE = 40;
@@ -76,6 +78,15 @@ bool collidesWithTree(
 		trunkBounds).has_value();
 }
 
+struct Petal
+{
+	sf::Vector2f position;
+	float speed;
+	float drift;
+	float rotation;
+	float size;
+};
+
 int main()
 {
 	sf::RenderWindow window(
@@ -149,6 +160,34 @@ int main()
 
 		sf::Sprite tree(treeTexture);
 
+		//Load mushroomTexture
+		sf::Texture mushroomTexture;
+
+		if (!mushroomTexture.loadFromFile(
+			"assets/decorations/mushrooms.png"))
+		{
+			return 1;
+		}
+
+		mushroomTexture.setSmooth(false);
+
+		sf::Sprite mushroom(mushroomTexture);
+
+		//Mushroom locations
+		sf::Vector2f mushroomPositions[] =
+		{
+			{ 125.f, 85.f },	
+			{ 490.f, 175.f },
+			{ 735.f, 145.f },
+			{ 90.f, 640.f },
+			{ 450.f, 620.f },
+			{ 875.f, 610.f },
+			{ 1100.f, 660.f },
+			{ 690.f, 400.f },
+			{ 470.f, 350.f }
+		};
+
+
 
 		//Cherry blossom tree locations
 		sf::Vector2f treePositions[] =
@@ -161,6 +200,37 @@ int main()
 			{ 800.f, 530.f },
 			{ 1140.f, 540.f }
 		};
+
+		//Cherry blossom petals
+		std::vector<Petal> petals;
+
+		std::mt19937 petalRandom(123);
+
+		std::uniform_real_distribution<float>
+			petalX(0.f, 1280.f),
+			petalY(0.f, 720.f),
+			petalSpeed(15.f, 35.f),
+			petalDrift(8.f, 22.f),
+			petalSize(3.f, 6.f),
+			petalRotation(0.f, 360.f);
+
+		for (int i = 0; i < 60; i++)
+		{
+			Petal petal;
+
+			petal.position = {
+				petalX(petalRandom),
+				petalY(petalRandom)
+			};
+
+			petal.speed = petalSpeed(petalRandom);
+			petal.drift = petalDrift(petalRandom);
+			petal.rotation = petalRotation(petalRandom);
+			petal.size = petalSize(petalRandom);
+
+				petals.push_back(petal);
+		}
+		float windTime = 0.f;
 
 	//Create the farm map
 	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
@@ -227,6 +297,33 @@ int main()
 	while (window.isOpen())
 	{
 		float deltaTime = clock.restart().asSeconds();
+
+		//Update falling petals
+		windTime += deltaTime;
+
+		for (auto& petal : petals)
+		{
+			petal.position.y += petal.speed * deltaTime;
+
+			petal.position.x +=
+				(petal.drift +
+					std::sin(windTime * 2.f +
+						petal.rotation * 0.0174533f)
+				* 10.f)* deltaTime;
+
+			petal.rotation += 30.f * deltaTime;
+
+			if (petal.position.y > 730.f)
+			{
+				petal.position.y = -10.f;
+				petal.position.x = petalX(petalRandom);
+			}
+
+			if (petal.position.x > 1290.f)
+			{
+				petal.position.x = -10.f;
+			}
+		}
 
 		while (const auto event = window.pollEvent())
 		{
@@ -393,6 +490,23 @@ int main()
 			}
 		}
 
+		//Draw mushrooms
+		int mushroomIndex = 0;
+		
+		for (const auto& position : mushroomPositions)
+		{
+			float scale = 0.6f +
+				(mushroomIndex % 3) * 0.2f;
+
+			mushroom.setScale({ scale, scale });
+			mushroom.setPosition(position);
+
+			window.draw(mushroom);
+
+			mushroomIndex++;
+		}
+
+
 		/// Calculate the player's ground position
 		float playerFeet = player.getPosition().y +
 			player.getSize().y;
@@ -420,6 +534,27 @@ int main()
 			}
 			}
 		
+		//Draw cherry blossom petals
+		for (const auto& petal : petals)
+		{
+			sf::RectangleShape petalShape(
+				{ petal.size, petal.size * 0.65f });
+
+			petalShape.setOrigin(
+				{ petal.size / 2.f,
+				  petal.size * 0.325f });
+
+			petalShape.setFillColor(
+				sf::Color(255, 183, 211, 220));
+			
+			petalShape.setPosition(petal.position);
+
+			petalShape.setRotation(
+				sf::degrees(petal.rotation));
+			
+			window.draw(petalShape);
+		}
+
 	window.display();
 }
 
