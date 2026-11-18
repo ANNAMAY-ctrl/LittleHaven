@@ -78,13 +78,40 @@ bool collidesWithTree(
 		trunkBounds).has_value();
 }
 
+bool collidesWithCottage(
+	sf::Vector2f position,
+	sf::Vector2f size,
+	sf::Vector2f cottagePosition)
+{
+	sf::FloatRect playerBounds(position, size);
+
+	sf::FloatRect cottageBounds(
+		{
+			cottagePosition.x + 15.f,
+			cottagePosition.y + 85.f
+		},
+		{ 130.f, 65.f }
+	);
+
+	return playerBounds.findIntersection(cottageBounds).has_value();
+}
+
 struct Petal
 {
-	sf::Vector2f position;
-	float speed;
-	float drift;
-	float rotation;
-	float size;
+	sf::Vector2f position{ 0.f, 0.f };
+	float speed = 0.f;
+	float drift = 0.f;
+	float rotation = 0.f;
+	float size = 0.f;
+};
+
+struct Butterfly
+{
+	sf::Vector2f position{ 0.f, 0.f };
+	float speed = 0.f;
+	float direction = 0.f;
+	float wingTime = 0.f;
+	sf::Color color = sf::Color::White;
 };
 
 int main()
@@ -146,7 +173,7 @@ int main()
 			return 1;
 		}
 
-		rockTexture.setSmooth(false);
+		reedsTexture.setSmooth(false);
 		sf::Sprite reeds(reedsTexture);
 
 		//Load cherry blossom texture
@@ -172,6 +199,25 @@ int main()
 		mushroomTexture.setSmooth(false);
 
 		sf::Sprite mushroom(mushroomTexture);
+
+	//Load cottage texture
+		sf::Texture cottageTexture;
+		if (!cottageTexture.loadFromFile(
+			"assets/buildings/cottage.png"))
+		{
+			return 1;
+		}
+
+		cottageTexture.setSmooth(false);
+
+		sf::Sprite cottage(cottageTexture);
+
+		cottage.setScale({
+			160.f / cottageTexture.getSize().x,
+			160.f / cottageTexture.getSize().y
+			});
+
+		cottage.setPosition({ 640.f, 120.f });
 
 		//Mushroom locations
 		sf::Vector2f mushroomPositions[] =
@@ -204,7 +250,7 @@ int main()
 		//Cherry blossom petals
 		std::vector<Petal> petals;
 
-		std::mt19937 petalRandom(123);
+		static std::mt19937 petalRandom(123);
 
 		std::uniform_real_distribution<float>
 			petalX(0.f, 1280.f),
@@ -231,12 +277,48 @@ int main()
 				petals.push_back(petal);
 		}
 		float windTime = 0.f;
+		float waterTime = 0.f;
+
+		//Create butterflies 
+		std::vector<Butterfly> butterflies;
+
+		for (int i = 0; i < 8; i++)
+		{
+			Butterfly butterfly;
+
+			butterfly.position = {
+				petalX(petalRandom),
+				petalY(petalRandom)
+			};
+
+			butterfly.speed = 20.f + i * 3.f;
+			butterfly.direction = i * 0.8f;
+			butterfly.wingTime = i * 0.5f;
+
+
+			if (i % 3 == 0)
+			{
+				butterfly.color = sf::Color(224, 145, 185);
+			}
+				
+			else if (i % 3 == 1)
+			{
+				butterfly.color = sf::Color(180, 145, 220);
+			}
+			else
+		{
+			butterfly.color = sf::Color(245, 210, 125);
+		}
+
+			butterflies.push_back(butterfly);
+		}
+		float butterflyTime = 0.f;
 
 	//Create the farm map
-	int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
-	int grassVariants[MAP_HEIGHT][MAP_WIDTH] = {};
+		static int farmMap[MAP_HEIGHT][MAP_WIDTH] = {};
+		static int grassVariants[MAP_HEIGHT][MAP_WIDTH] = {};
 
-	std::mt19937 randomGenerator(42);
+	static std::mt19937 randomGenerator(42);
 
 	std::discrete_distribution<int> grassDistribution(
 		{ 35, 25, 20, 7, 7, 6 }
@@ -292,6 +374,11 @@ int main()
 	//Movement speed
 	float speed = 250.f;
 
+	//Cottage interactions
+	bool insideCottage = false;
+
+
+
 	sf::Clock clock;
 
 	while (window.isOpen())
@@ -300,6 +387,43 @@ int main()
 
 		//Update falling petals
 		windTime += deltaTime;
+		waterTime += deltaTime;
+
+		//Update butterfly movement
+		butterflyTime += deltaTime;
+
+		for (auto& butterfly : butterflies)
+		{
+			butterfly.wingTime += deltaTime * 12.f;
+			butterfly.direction +=
+				std::sin(butterflyTime +
+					butterfly.wingTime * 0.05f)
+				* deltaTime;
+
+			butterfly.position.x +=
+				std::cos(butterfly.direction)
+				* butterfly.speed * deltaTime;
+
+
+			butterfly.position.y +=
+				std::sin(butterfly.direction)
+				* butterfly.speed * deltaTime;
+
+			//Keep butterflies inside world
+			if (butterfly.position.x > 1290.f)
+				butterfly.position.x = -10;
+
+			if (butterfly.position.x < -10.f)
+				butterfly.position.x = 1290;
+
+			if (butterfly.position.y > 730.f)
+				butterfly.position.y = -10.f;
+
+			if (butterfly.position.y < -10.f)
+				butterfly.position.y = 730.f;
+		}
+
+
 
 		for (auto& petal : petals)
 		{
@@ -332,7 +456,7 @@ int main()
 		}
 
 
-		//Player movement
+	
 			// Player movement
 		sf::Vector2f movement({ 0.f, 0.f });
 
@@ -362,6 +486,15 @@ int main()
 				break;
 			}
 		}
+
+		if (collidesWithCottage(
+			nextY,
+			player.getSize(),
+			cottage.getPosition()
+		))
+		{
+			blockedY = true;
+		}
 		
 		if (!blockedY && canMove(
 			nextY, player.getSize(), farmMap))
@@ -383,6 +516,15 @@ int main()
 				blockedX = true;
 				break;
 			}
+		}
+
+		if (collidesWithCottage(
+			nextX,
+			player.getSize(),
+			cottage.getPosition()
+		))
+		{
+			blockedX = true;
 		}
 
 		if (!blockedX && canMove(
@@ -426,10 +568,20 @@ int main()
 				case 2:
 					tile.setTexture(&waterTexture, true);
 
-					if ((x + y) % 3 == 0)
-						tile.setFillColor(sf::Color(225, 240, 255));
-					else
-						tile.setFillColor(sf::Color::White);
+					{
+						float wave = std::sin(
+							waterTime * 1.5f +
+							x * 0.45f +
+							y * 0.35f);
+
+						int brightness =
+							static_cast<int>(240.f + wave * 15.f);
+
+						tile.setFillColor(sf::Color(
+							brightness,
+							brightness,
+							255));
+					}
 					break;
 
 
@@ -490,6 +642,38 @@ int main()
 			}
 		}
 
+		
+		// Draw animated water reflections
+		for (int y = 0; y < MAP_HEIGHT; y++)
+		{
+			for (int x = 0; x < MAP_WIDTH; x++)
+			{
+				if (farmMap[y][x] == 2)
+				{
+					float phase = waterTime * 1.5f +
+						x * 2.f + y * 3.f;
+
+					float shimmer = std::sin(phase);
+
+					sf::RectangleShape reflection(
+						{ 12.f, 2.f });
+
+					reflection.setPosition({
+						x * TILE_SIZE + 14.f +
+							shimmer * 8.f,
+						y * TILE_SIZE + 20.f
+						});
+
+					reflection.setFillColor(
+						sf::Color(220, 245, 255,
+							static_cast<int>(
+								35.f + shimmer * 25.f)));
+
+					window.draw(reflection);
+				}
+			}
+		}
+		
 		//Draw mushrooms
 		int mushroomIndex = 0;
 		
@@ -506,10 +690,13 @@ int main()
 			mushroomIndex++;
 		}
 
-
-		/// Calculate the player's ground position
+		// Calculate the player's ground position
 		float playerFeet = player.getPosition().y +
 			player.getSize().y;
+
+		// Calculate cottage depth
+		float cottageDepth =
+			cottage.getPosition().y + 150.f;
 
 		// Draw trees behind the player
 		for (const auto& position : treePositions)
@@ -521,10 +708,22 @@ int main()
 			}
 		}
 
-		//Draw player
+		// Draw cottage behind player
+		if (cottageDepth <= playerFeet)
+		{
+			window.draw(cottage);
+		}
+
+		// Draw player
 		window.draw(player);
 
-			//Draw trees in front of the player
+		// Draw cottage in front of player
+		if (cottageDepth > playerFeet)
+		{
+			window.draw(cottage);
+		}
+
+		// Draw trees in front of the player
 		for (const auto& position : treePositions)
 		{
 			if (position.y + 150.f > playerFeet)
@@ -532,8 +731,54 @@ int main()
 				tree.setPosition(position);
 				window.draw(tree);
 			}
-			}
+		}
 		
+		//Draw animated butterlies 
+		for (const auto& butterfly : butterflies)
+		{
+			float flap = 2.f +
+				std::abs(std::sin(butterfly.wingTime)) * 6.f;
+
+			//Left wing
+			sf::RectangleShape leftWing(
+				{ flap, 8.f });
+
+			leftWing.setFillColor(butterfly.color);
+
+			leftWing.setPosition({
+					butterfly.position.x - flap,
+					butterfly.position.y - 4.f
+				});
+
+			//Right wing
+			sf::RectangleShape rightWing(
+				{ flap, 8.f });
+
+		rightWing.setFillColor(butterfly.color);
+
+			rightWing.setPosition({
+				butterfly.position.x + 2.f,
+				butterfly.position.y - 4.f
+				});
+
+			//Butterly body
+			sf::RectangleShape body(
+				{ 2.f, 10.f });
+
+			body.setFillColor(
+				sf::Color(75, 55, 70));
+
+			body.setPosition({
+				butterfly.position.x,
+				butterfly.position.y - 5.f
+				});
+
+			window.draw(leftWing);
+			window.draw(rightWing);
+			window.draw(body);
+		}
+
+
 		//Draw cherry blossom petals
 		for (const auto& petal : petals)
 		{
