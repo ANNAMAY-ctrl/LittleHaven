@@ -121,6 +121,7 @@ int main()
 	);
 
 	window.setFramerateLimit(60);
+	window.setKeyRepeatEnabled(false);
 
 	//Load grass texture
 	sf::Texture grassTexture;
@@ -218,6 +219,7 @@ int main()
 			});
 
 		cottage.setPosition({ 640.f, 120.f });
+
 
 		//Mushroom locations
 		sf::Vector2f mushroomPositions[] =
@@ -377,6 +379,16 @@ int main()
 	//Cottage interactions
 	bool insideCottage = false;
 
+	sf::Vector2f outsidePosition{ 0.f, 0.f };
+
+	sf::Vector2f cottageDoor = {
+		cottage.getPosition().x + 80.f,
+		cottage.getPosition().y + 150.f
+	};
+
+	sf::Vector2f interiorDoor = {
+		640.f, 640.f
+	};
 
 
 	sf::Clock clock;
@@ -453,6 +465,57 @@ int main()
 		{
 			if (event->is<sf::Event::Closed>())
 				window.close();
+
+			if (const auto* keyPressed =
+				event->getIf<sf::Event::KeyPressed>())
+			{
+				if (keyPressed->code ==
+					sf::Keyboard::Key::E)
+				{
+					sf::Vector2f feet = {
+						player.getPosition().x +
+						player.getSize().x / 2.f,
+
+						  player.getPosition().y +
+					player.getSize().y
+					};
+
+					if (!insideCottage)
+					{
+						float distance = std::hypot(
+							feet.x - cottageDoor.x,
+							feet.y - cottageDoor.y
+						);
+
+						if (distance < 60.f)
+						{
+							outsidePosition =
+								player.getPosition();
+
+							insideCottage = true;
+
+							player.setPosition({
+								620.f, 540.f
+								});
+						}
+					}
+					else
+					{
+						float distance = std::hypot(
+							feet.x - interiorDoor.x,
+							feet.y - interiorDoor.y
+						);
+
+						if (distance < 70.f)
+						{
+							insideCottage = false;
+
+							player.setPosition(
+								outsidePosition);
+						}
+					}
+				}
+			}
 		}
 
 
@@ -471,6 +534,140 @@ int main()
 
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 			movement.x += speed * deltaTime;
+
+
+		//Cottage interior 
+		if (insideCottage)
+		{
+			sf::Vector2f nextPosition =
+				player.getPosition() + movement;
+
+			if (nextPosition.x >= 200.f &&
+				nextPosition.x + player.getSize().x <= 1080.f)
+			{
+				player.move({ movement.x, 0.f });
+			}
+
+			if (nextPosition.y >= 160.f &&
+				nextPosition.y + player.getSize().y <= 660.f)
+			{
+				player.move({ 0.f, movement.y });
+			}
+			window.clear(sf::Color(65, 45, 50));
+
+			//Wooden flooring
+			sf::RectangleShape floor({ 880.f, 500.f });
+			floor.setPosition({ 200.f, 160.f });
+			floor.setFillColor(sf::Color(198, 156, 114));
+
+			window.draw(floor);
+
+			//Wooden floor planks
+			for (int row = 0; row < 20; row++)
+			{
+				for (int col = 0; col < 11; col++)
+				{
+					sf::RectangleShape plank({ 78.f, 23.f });
+
+					plank.setPosition({
+						201.f + col * 80.f,
+						161.f + row * 25.f
+						});
+
+					int shade = (row * 7 + col * 3) % 15;
+
+					plank.setFillColor(sf::Color(
+						210 - shade,
+						170 - shade,
+						130 - shade
+					));
+
+					window.draw(plank);
+				}
+			}
+
+			//Pink wallpaper
+			sf::RectangleShape wall({ 880.f, 100.f });
+			wall.setPosition({ 200.f, 60.f });
+			wall.setFillColor(sf::Color(235, 190, 204));
+
+			window.draw(wall);
+
+			//Wallpaper stripes
+			for (int i = 0; i < 22; i++)
+			{
+				sf::RectangleShape stripe({ 20.f, 100.f });
+
+				stripe.setPosition({
+						200.f + i * 40.f,
+						60.f
+					});
+
+				stripe.setFillColor(sf::Color(244, 211, 220));
+
+				window.draw(stripe);
+			}
+
+			//Floral wallpaper pattern
+			for (int row = 0; row < 2; row++)
+			{
+				for (int col = 0; col < 22; col++)
+				{
+					float x = 210.f + col * 40.f;
+					float y = 85.f + row * 40.f;
+
+					for (int petal = 0; petal < 5; petal++)
+					{
+						float angle = petal * 6.283185f / 5.f;
+
+						sf::CircleShape flowerPetal(3.f, 8);
+
+						flowerPetal.setPosition({
+							x + std::cos(angle) * 4.f - 3.f,
+							y + std::sin(angle) * 4.f - 3.f,
+							});
+
+						flowerPetal.setFillColor(
+							sf::Color(203, 133, 161));
+
+						window.draw(flowerPetal);
+					}
+
+					sf::CircleShape center(2.f);
+					center.setPosition({ x - 2.f, y - 2.f });
+					center.setFillColor(sf::Color(255, 231, 174));
+
+					window.draw(center);
+				}
+			}
+
+			//Cream skirting board 
+			sf::RectangleShape skirting({ 880.f, 12.f });
+			skirting.setPosition({ 200.f, 148.f });
+			skirting.setFillColor(sf::Color(250, 234, 213));
+
+			window.draw(skirting);
+
+			//Wooden ceiling border
+			sf::RectangleShape ceiling({ 880.f, 10.f });
+			ceiling.setPosition({ 200.f, 60.f });
+			ceiling.setFillColor(sf::Color(153, 111, 82));
+
+			window.draw(ceiling);
+
+			//Exit door
+			sf::RectangleShape exitDoor({ 80.f, 20.f });
+			exitDoor.setPosition({ 600.f, 640.f });
+			exitDoor.setFillColor(sf::Color(125, 85, 55));
+
+			window.draw(exitDoor);
+
+			window.draw(player);
+			window.display();
+
+			continue;
+		}
+
 
 		//Vertical collision
 		sf::Vector2f nextY = player.getPosition() +
